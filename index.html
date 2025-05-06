@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Habit Tracker</title>
+  <!-- Bootstrap 3.3.7 CSS -->
+  <link
+    rel="stylesheet"
+    href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
+  >
+  <style>
+    body {
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      max-width: 100%;
+      overflow-x: auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    table {
+      white-space: nowrap;
+    }
+    th, td {
+      text-align: center;
+      vertical-align: middle !important;
+    }
+    input[type="text"] {
+      width: 100%;
+      box-sizing: border-box;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <table id="habitTable" class="table table-bordered"></table>
+  </div>
+
+  <script>
+    // Number of habits (rows) and days (columns)
+    var NUM_HABITS = 5;
+    var NUM_DAYS   = 31;
+
+    // Load or initialize data
+    function getDefaultData() {
+      var arr = [];
+      for (var i = 0; i < NUM_HABITS; i++) {
+        var row = { name: '', checks: [] };
+        for (var j = 0; j < NUM_DAYS; j++) {
+          row.checks.push(false);
+        }
+        arr.push(row);
+      }
+      return arr;
+    }
+
+    function loadData() {
+      var raw = localStorage.getItem('habitData');
+      if (raw) {
+        try {
+          return JSON.parse(raw);
+        } catch (e) {
+          // if parse fails, clear and reinit
+          localStorage.removeItem('habitData');
+        }
+      }
+      return getDefaultData();
+    }
+
+    function saveData(data) {
+      localStorage.setItem('habitData', JSON.stringify(data));
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      var data  = loadData();
+      var table = document.getElementById('habitTable');
+
+      // Build header
+      var thead     = document.createElement('thead');
+      var headerRow = document.createElement('tr');
+      var th0       = document.createElement('th');
+      th0.textContent = 'Habit Tracker';
+      headerRow.appendChild(th0);
+
+      for (var d = 1; d <= NUM_DAYS; d++) {
+        var th = document.createElement('th');
+        th.textContent = d;
+        headerRow.appendChild(th);
+      }
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
+
+      // Build body
+      var tbody = document.createElement('tbody');
+
+      data.forEach(function(rowData, rowIndex) {
+        var row = document.createElement('tr');
+
+        // Habit name cell
+        var tdName = document.createElement('td');
+        var inp    = document.createElement('input');
+        inp.type   = 'text';
+        inp.placeholder = 'Enter habit';
+        inp.className   = 'form-control';
+        inp.value       = rowData.name;
+        // Save on change
+        inp.addEventListener('change', function() {
+          data[rowIndex].name = this.value;
+          saveData(data);
+        });
+        tdName.appendChild(inp);
+        row.appendChild(tdName);
+
+        // Day checkboxes
+        for (var dayIdx = 0; dayIdx < NUM_DAYS; dayIdx++) {
+          var td = document.createElement('td');
+          var cb = document.createElement('input');
+          cb.type    = 'checkbox';
+          cb.checked = rowData.checks[dayIdx];
+
+          // Add confirm + save logic
+          (function(checkbox, rIdx, dIdx, habitInput) {
+            checkbox.addEventListener('change', function() {
+              var newState = this.checked;
+              var oldState = !newState;
+              var habitName = habitInput.value.trim() || '[no name]';
+              var dayNumber = dIdx + 1;
+              var promptMsg = (newState
+                ? 'Mark "' + habitName + '" as done on Day ' + dayNumber + '?'
+                : 'Unmark "' + habitName + '" on Day ' + dayNumber + '?'
+              );
+              if (confirm(promptMsg)) {
+                data[rIdx].checks[dIdx] = newState;
+                saveData(data);
+              } else {
+                // revert
+                this.checked = oldState;
+              }
+            });
+          })(cb, rowIndex, dayIdx, inp);
+
+          td.appendChild(cb);
+          row.appendChild(td);
+        }
+
+        tbody.appendChild(row);
+      });
+
+      table.appendChild(tbody);
+    });
+  </script>
+</body>
+</html>
